@@ -8,6 +8,7 @@ import 'src/services/manga_repository.dart';
 import 'src/state/app_theme_controller.dart';
 import 'src/state/bookmark_controller.dart';
 import 'src/state/read_history_controller.dart';
+import 'src/state/reading_progress_controller.dart';
 import 'src/state/reader_settings_controller.dart';
 
 Future<void> main() async {
@@ -21,11 +22,13 @@ Future<void> main() async {
   final readerSettings = ReaderSettingsController(storage);
   final bookmarks = BookmarkController(storage, repository);
   final readHistory = ReadHistoryController(storage);
+  final readingProgress = ReadingProgressController(storage);
 
   await Future.wait([
     themeController.load(),
     readerSettings.load(),
     bookmarks.load(),
+    readingProgress.load(),
   ]);
 
   runApp(
@@ -38,6 +41,7 @@ Future<void> main() async {
         ChangeNotifierProvider.value(value: readerSettings),
         ChangeNotifierProvider.value(value: bookmarks),
         ChangeNotifierProvider.value(value: readHistory),
+        ChangeNotifierProvider.value(value: readingProgress),
       ],
       child: const KomikinApp(),
     ),

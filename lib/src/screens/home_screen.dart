@@ -1,14 +1,18 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../core/result_state.dart';
 import '../models/manga_list_response.dart';
 import '../models/manga_type.dart';
+import '../models/reading_progress.dart';
 import '../services/manga_repository.dart';
+import '../state/reading_progress_controller.dart';
 import '../widgets/app_error.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/loading_grid.dart';
-import '../widgets/manga_grid.dart';
+import '../widgets/manga_card.dart';
 import '../widgets/paging_bar.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -66,7 +70,22 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Komikin'),
+        titleSpacing: 12,
+        title: Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: Image.asset(
+                'assets/images/komikin_logo.png',
+                width: 34,
+                height: 34,
+                fit: BoxFit.cover,
+              ),
+            ),
+            const SizedBox(width: 10),
+            const Text('KomikIN'),
+          ],
+        ),
         actions: [
           IconButton(
             onPressed: _state.isLoading ? null : () => _load(refresh: true),
@@ -136,7 +155,55 @@ class _HomeScreenState extends State<HomeScreen> {
       onRefresh: () => _load(refresh: true),
       child: Stack(
         children: [
-          MangaGrid(items: data.mangaList),
+          CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              const _ContinueReadingSection(),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          _type.label,
+                          style:
+                              Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                        ),
+                      ),
+                      Text(
+                        'Page $_page',
+                        style:
+                            Theme.of(context).textTheme.labelMedium?.copyWith(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
+                                ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                sliver: SliverGrid.builder(
+                  itemCount: data.mangaList.length,
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount:
+                        _columnsForWidth(MediaQuery.sizeOf(context).width),
+                    mainAxisSpacing: 14,
+                    crossAxisSpacing: 12,
+                    childAspectRatio: 0.56,
+                  ),
+                  itemBuilder: (context, index) {
+                    return MangaCard(manga: data.mangaList[index]);
+                  },
+                ),
+              ),
+            ],
+          ),
           if (_state.isLoading)
             const Positioned(
               left: 0,
@@ -148,4 +215,164 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+}
+
+class _ContinueReadingSection extends StatelessWidget {
+  const _ContinueReadingSection();
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<ReadingProgressController>(
+      builder: (context, progress, _) {
+        final items = progress.items.take(10).toList();
+        if (items.isEmpty) return const SliverToBoxAdapter();
+
+        return SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(0, 10, 0, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Continue Reading',
+                          style:
+                              Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                        ),
+                      ),
+                      Text(
+                        '${items.length}',
+                        style:
+                            Theme.of(context).textTheme.labelMedium?.copyWith(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
+                                ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  height: 154,
+                  child: ListView.separated(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    scrollDirection: Axis.horizontal,
+                    itemBuilder: (context, index) {
+                      return _ContinueReadingCard(progress: items[index]);
+                    },
+                    separatorBuilder: (context, index) =>
+                        const SizedBox(width: 10),
+                    itemCount: items.length,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _ContinueReadingCard extends StatelessWidget {
+  const _ContinueReadingCard({required this.progress});
+
+  final ReadingProgress progress;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
+    return SizedBox(
+      width: 252,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: () => context.push('/read/${progress.chapterId}'),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: colors.surfaceContainerLowest,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: colors.outlineVariant),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(10),
+            child: Row(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: SizedBox(
+                    width: 76,
+                    height: 112,
+                    child: CachedNetworkImage(
+                      imageUrl: progress.cover,
+                      fit: BoxFit.cover,
+                      placeholder: (context, url) => ColoredBox(
+                        color: colors.surfaceContainerHighest,
+                      ),
+                      errorWidget: (context, url, error) => ColoredBox(
+                        color: colors.surfaceContainerHighest,
+                        child: const Icon(Icons.menu_book_outlined),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        progress.mangaTitle,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w800,
+                            ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        progress.chapterTitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: colors.onSurfaceVariant,
+                            ),
+                      ),
+                      const Spacer(),
+                      LinearProgressIndicator(
+                        value:
+                            progress.fraction == 0 ? null : progress.fraction,
+                        minHeight: 5,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        progress.pageLabel,
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              color: colors.onSurfaceVariant,
+                            ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+int _columnsForWidth(double width) {
+  if (width >= 900) return 6;
+  if (width >= 620) return 4;
+  return 3;
 }

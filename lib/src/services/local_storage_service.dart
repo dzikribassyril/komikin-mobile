@@ -4,9 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/reader_settings.dart';
+import '../models/reading_progress.dart';
 
 class LocalStorageService {
   static const _bookmarkKey = 'bookmarks';
+  static const _readingProgressKey = 'reading-progress';
   static const _readerSettingsKey = 'manga-reader-settings';
   static const _themeModeKey = 'theme-mode';
 
@@ -18,6 +20,33 @@ class LocalStorageService {
   Future<void> saveBookmarkSlugs(List<String> slugs) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setStringList(_bookmarkKey, slugs);
+  }
+
+  Future<List<ReadingProgress>> getReadingProgress() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_readingProgressKey);
+    if (raw == null) return const [];
+
+    try {
+      final decoded = jsonDecode(raw) as List;
+      return decoded
+          .whereType<Map>()
+          .map((item) => ReadingProgress.fromJson(
+                Map<String, dynamic>.from(item),
+              ))
+          .where((item) => item.canResume)
+          .toList();
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  Future<void> saveReadingProgress(List<ReadingProgress> progress) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      _readingProgressKey,
+      jsonEncode(progress.map((item) => item.toJson()).toList()),
+    );
   }
 
   Future<ReaderSettings> getReaderSettings() async {

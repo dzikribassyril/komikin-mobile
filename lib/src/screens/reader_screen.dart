@@ -8,6 +8,7 @@ import '../models/chapter_detail.dart';
 import '../models/reader_settings.dart';
 import '../services/manga_repository.dart';
 import '../state/read_history_controller.dart';
+import '../state/reading_progress_controller.dart';
 import '../state/reader_settings_controller.dart';
 import '../widgets/app_error.dart';
 
@@ -29,6 +30,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
   ResultState<ChapterDetail> _state = const ResultState.loading();
   bool _showControls = true;
   int _currentPage = 0;
+  int _lastSavedPage = -1;
 
   @override
   void initState() {
@@ -46,6 +48,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
   void didUpdateWidget(covariant ReaderScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.chapterId != widget.chapterId) {
+      _lastSavedPage = -1;
       if (_pageController.hasClients) {
         _pageController.jumpToPage(0);
       }
@@ -57,18 +60,30 @@ class _ReaderScreenState extends State<ReaderScreen> {
     setState(() => _state = ResultState.loading(_state.data));
 
     try {
-      final chapter = await context.read<MangaRepository>().fetchChapter(
-            widget.chapterId,
-            refresh: refresh,
-          );
-      await context
-          .read<ReadHistoryController>()
-          .markAsRead(chapter.mangaSlug, chapter.chapterId);
+      final repository = context.read<MangaRepository>();
+      final readHistory = context.read<ReadHistoryController>();
+      final readingProgress = context.read<ReadingProgressController>();
+      final chapter = await repository.fetchChapter(
+        widget.chapterId,
+        refresh: refresh,
+      );
+      final saved = readingProgress.progressFor(chapter.mangaSlug);
+      final savedPage =
+          saved?.chapterId == chapter.chapterId ? saved?.page ?? 1 : 1;
+      final startPage = chapter.pages.isEmpty
+          ? 0
+          : (savedPage - 1).clamp(0, chapter.pages.length - 1).toInt();
+      await readHistory.markAsRead(chapter.mangaSlug, chapter.chapterId);
+      await readingProgress.updateFromChapter(chapter, pageIndex: startPage);
       if (!mounted) return;
       setState(() {
-        _currentPage = 0;
+        _currentPage = startPage;
+        _lastSavedPage = startPage;
         _state = ResultState.success(chapter);
       });
+      if (_pageController.hasClients && startPage > 0) {
+        _pageController.jumpToPage(startPage);
+      }
     } catch (error) {
       if (!mounted) return;
       setState(() => _state = ResultState.failure(error.toString()));
@@ -105,7 +120,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
       backgroundColor: Colors.black,
       appBar: _showControls
           ? AppBar(
-              backgroundColor: Colors.black.withOpacity(0.92),
+              backgroundColor: Colors.black.withValues(alpha: 0.92),
               foregroundColor: Colors.white,
               title: Text(
                 chapter.title,
@@ -130,16 +145,32 @@ class _ReaderScreenState extends State<ReaderScreen> {
         behavior: HitTestBehavior.opaque,
         onTap: () => setState(() => _showControls = !_showControls),
         child: settings.readingMode == ReadingMode.vertical
-            ? _VerticalReader(
-                chapter: chapter,
-                pageWidth: settings.pageWidth,
+            ? NotificationListener<ScrollNotification>(
+                onNotification: (notification) {
+                  final maxScroll = notification.metrics.maxScrollExtent;
+                  if (maxScroll <= 0 || chapter.pages.isEmpty) return false;
+
+                  final fraction =
+                      (notification.metrics.pixels / maxScroll).clamp(0, 1);
+                  final pageIndex =
+                      (fraction * (chapter.pages.length - 1)).round();
+                  _saveProgress(chapter, pageIndex);
+                  return false;
+                },
+                child: _VerticalReader(
+                  chapter: chapter,
+                  pageWidth: settings.pageWidth,
+                ),
               )
             : _HorizontalReader(
                 chapter: chapter,
                 pageWidth: settings.pageWidth,
                 pageController: _pageController,
                 currentPage: _currentPage,
-                onPageChanged: (page) => setState(() => _currentPage = page),
+                onPageChanged: (page) {
+                  setState(() => _currentPage = page);
+                  _saveProgress(chapter, page);
+                },
               ),
       ),
       bottomNavigationBar: _showControls
@@ -150,6 +181,14 @@ class _ReaderScreenState extends State<ReaderScreen> {
             )
           : null,
     );
+  }
+
+  Future<void> _saveProgress(ChapterDetail chapter, int pageIndex) async {
+    if (_lastSavedPage == pageIndex) return;
+    _lastSavedPage = pageIndex;
+    await context
+        .read<ReadingProgressController>()
+        .updateFromChapter(chapter, pageIndex: pageIndex);
   }
 
   Future<void> _showReaderSettings(BuildContext context) async {
@@ -291,9 +330,9 @@ class _HorizontalReader extends StatelessWidget {
                   begin: Alignment.centerLeft,
                   end: Alignment.centerRight,
                   colors: [
-                    Colors.black.withOpacity(0.18),
+                    Colors.black.withValues(alpha: 0.18),
                     Colors.transparent,
-                    Colors.black.withOpacity(0.18),
+                    Colors.black.withValues(alpha: 0.18),
                   ],
                 ),
               ),
@@ -409,7 +448,7 @@ class _PageArrow extends StatelessWidget {
           padding: const EdgeInsets.all(12),
           child: IconButton.filled(
             style: IconButton.styleFrom(
-              backgroundColor: Colors.black.withOpacity(0.56),
+              backgroundColor: Colors.black.withValues(alpha: 0.56),
               foregroundColor: Colors.white,
             ),
             onPressed: onPressed,
@@ -441,7 +480,7 @@ class _ReaderBottomBar extends StatelessWidget {
     return SafeArea(
       top: false,
       child: ColoredBox(
-        color: Colors.black.withOpacity(0.92),
+        color: Colors.black.withValues(alpha: 0.92),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
           child: Row(
