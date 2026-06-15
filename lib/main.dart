@@ -16,8 +16,12 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   final storage = LocalStorageService();
-  final apiBaseUrl = await storage.getApiBaseUrl(AppConfig.apiBaseUrl);
-  final apiClient = ApiClient(baseUrl: apiBaseUrl);
+  final defaultApiBaseUrl = await AppConfig.resolveApiBaseUrl();
+  final savedApiBaseUrl = await storage.getSavedApiBaseUrl();
+  final apiClient = ApiClient(
+    baseUrl: savedApiBaseUrl ?? defaultApiBaseUrl,
+    defaultBaseUrl: defaultApiBaseUrl,
+  );
   final repository = MangaRepository(apiClient);
 
   final themeController = AppThemeController(storage);

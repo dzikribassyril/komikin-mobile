@@ -1,0 +1,12 @@
+.dart_tool/
+.git/
+.idea/
+.vscode/
+android/.gradle/
+android/.kotlin/
+android/local.properties
+build/
+docker-compose*.yml
+*.iml
+*.log
+Thumbs.db

@@ -19,13 +19,18 @@ class ApiClient {
   ApiClient({
     http.Client? client,
     String? baseUrl,
+    String? defaultBaseUrl,
     Duration timeout = const Duration(seconds: 15),
   })  : _client = client ?? http.Client(),
         _baseUrl = _normalizeBaseUrl(baseUrl ?? AppConfig.apiBaseUrl),
+        defaultBaseUrl = _normalizeBaseUrl(
+          defaultBaseUrl ?? baseUrl ?? AppConfig.apiBaseUrl,
+        ),
         _timeout = timeout;
 
   final http.Client _client;
   String _baseUrl;
+  final String defaultBaseUrl;
   final Duration _timeout;
 
   String get baseUrl => _baseUrl;

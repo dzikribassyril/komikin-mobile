@@ -24,9 +24,13 @@ class LocalStorageService {
   }
 
   Future<String> getApiBaseUrl(String fallback) async {
+    return await getSavedApiBaseUrl() ?? fallback;
+  }
+
+  Future<String?> getSavedApiBaseUrl() async {
     final prefs = await SharedPreferences.getInstance();
     final value = prefs.getString(_apiBaseUrlKey)?.trim();
-    return value == null || value.isEmpty ? fallback : value;
+    return value == null || value.isEmpty ? null : value;
   }
 
   Future<void> saveApiBaseUrl(String value) async {

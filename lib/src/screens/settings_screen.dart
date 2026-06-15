@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../core/app_config.dart';
 import '../models/reader_settings.dart';
 import '../services/api_client.dart';
 import '../services/local_storage_service.dart';
@@ -168,7 +167,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _resetApiBaseUrl() async {
-    _apiController.text = AppConfig.apiBaseUrl;
+    _apiController.text = context.read<ApiClient>().defaultBaseUrl;
     await _saveApiBaseUrl();
   }
 

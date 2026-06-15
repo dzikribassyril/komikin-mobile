@@ -1,0 +1,14 @@
+services:
+  komikin-web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        KOMIKIN_API_BASE_URL: ${KOMIKIN_API_BASE_URL:-http://localhost:3000}
+    image: komikin-mobile-web:latest
+    container_name: komikin-mobile-web
+    restart: unless-stopped
+    ports:
+      - "${KOMIKIN_WEB_PORT:-8080}:80"
+    environment:
+      KOMIKIN_API_BASE_URL: ${KOMIKIN_API_BASE_URL:-http://localhost:3000}
