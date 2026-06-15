@@ -21,15 +21,18 @@ class ApiClient {
     String? baseUrl,
     Duration timeout = const Duration(seconds: 15),
   })  : _client = client ?? http.Client(),
-        _baseUrl = (baseUrl ?? AppConfig.apiBaseUrl).replaceFirst(
-          RegExp(r'/$'),
-          '',
-        ),
+        _baseUrl = _normalizeBaseUrl(baseUrl ?? AppConfig.apiBaseUrl),
         _timeout = timeout;
 
   final http.Client _client;
-  final String _baseUrl;
+  String _baseUrl;
   final Duration _timeout;
+
+  String get baseUrl => _baseUrl;
+
+  void setBaseUrl(String value) {
+    _baseUrl = _normalizeBaseUrl(value);
+  }
 
   Uri uri(String path) {
     final normalizedPath = path.startsWith('/') ? path : '/$path';
@@ -65,5 +68,9 @@ class ApiClient {
     } catch (error) {
       throw ApiException(error.toString());
     }
+  }
+
+  static String _normalizeBaseUrl(String value) {
+    return value.trim().replaceFirst(RegExp(r'/$'), '');
   }
 }

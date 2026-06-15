@@ -13,6 +13,12 @@ class MangaRepository {
   final Map<String, MangaDetail> _detailCache = {};
   final Map<String, ChapterDetail> _chapterCache = {};
 
+  void clearCache() {
+    _listCache.clear();
+    _detailCache.clear();
+    _chapterCache.clear();
+  }
+
   Future<MangaListResponse> fetchMangaList({
     required MangaType type,
     required int page,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'src/app/komikin_app.dart';
+import 'src/core/app_config.dart';
 import 'src/services/api_client.dart';
 import 'src/services/local_storage_service.dart';
 import 'src/services/manga_repository.dart';
@@ -15,7 +16,8 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   final storage = LocalStorageService();
-  final apiClient = ApiClient();
+  final apiBaseUrl = await storage.getApiBaseUrl(AppConfig.apiBaseUrl);
+  final apiClient = ApiClient(baseUrl: apiBaseUrl);
   final repository = MangaRepository(apiClient);
 
   final themeController = AppThemeController(storage);

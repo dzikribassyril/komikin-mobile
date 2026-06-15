@@ -8,6 +8,7 @@ import '../models/reading_progress.dart';
 
 class LocalStorageService {
   static const _bookmarkKey = 'bookmarks';
+  static const _apiBaseUrlKey = 'api-base-url';
   static const _readingProgressKey = 'reading-progress';
   static const _readerSettingsKey = 'manga-reader-settings';
   static const _themeModeKey = 'theme-mode';
@@ -20,6 +21,17 @@ class LocalStorageService {
   Future<void> saveBookmarkSlugs(List<String> slugs) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setStringList(_bookmarkKey, slugs);
+  }
+
+  Future<String> getApiBaseUrl(String fallback) async {
+    final prefs = await SharedPreferences.getInstance();
+    final value = prefs.getString(_apiBaseUrlKey)?.trim();
+    return value == null || value.isEmpty ? fallback : value;
+  }
+
+  Future<void> saveApiBaseUrl(String value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_apiBaseUrlKey, value.trim());
   }
 
   Future<List<ReadingProgress>> getReadingProgress() async {
